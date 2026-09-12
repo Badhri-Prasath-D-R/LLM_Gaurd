@@ -178,14 +178,6 @@ llm-guard-ext/
 6. If the user chooses to proceed (redacted or as is), the extension manually inserts the text at the saved selection point, using the appropriate method for the field type: direct `value` manipulation for `<textarea>`/`<input>`, or `document.execCommand('insertText')` with the selection explicitly restored for `contenteditable` elements.
 7. If Tier 1 finds nothing and Tier 2 is enabled, the paste is allowed to proceed immediately and unmodified. In the background, the extension optionally retrieves relevant chunks from the knowledge base, then sends the pasted text (plus any retrieved context) to the local LLM. If the LLM's verdict indicates a leak, a second style of banner appears, framed explicitly as a retroactive, informational warning rather than a blocking action.
 
-## Known limitations
-
-- Tier 2 cannot block the paste, only warn after the fact, because blocking on a network call to a local LLM would introduce noticeable input lag on every paste across every website.
-- Reasoning capable models (such as Gemma's thinking variants) can spend a significant number of tokens on internal reasoning before producing a final answer. The token budget and timeout for Tier 2 requests are set generously to accommodate this, but response times of five to fifteen seconds or more are possible depending on hardware.
-- The AWS Secret Access Key heuristic and the generic `KEY=value` pattern are intentionally broad and can occasionally produce false positives, since there is no universal format for these secrets. They are gated by nearby context keywords to reduce noise.
-- Content editable insertion uses `document.execCommand`, which is a deprecated browser API. It remains the most broadly compatible method across different sites' rich text editors at the time of writing, since no fully supported modern replacement exists for arbitrary third party contenteditable regions.
-- The extension currently requests host permissions for all URLs (`<all_urls>`), since sensitive data can be pasted on any website. This is a broad permission and Chrome will surface a corresponding warning at install time.
-
 ## Screenshots
 
 ### Connection settings
@@ -217,14 +209,3 @@ A retroactive warning shown after the local LLM flags pasted text as containing 
 The chat model and the embedding model running simultaneously in LM Studio, both reachable through the same local server.
 
 ![LM Studio models loaded](images/lm-studio-models-loaded.png)
-
-## Setup
-
-1. Install and open LM Studio.
-2. Load a chat capable model (this project was built and tested against `google/gemma-4-e4b`).
-3. Load an embedding model if the knowledge base feature will be used (this project was built and tested against `text-embedding-nomic-embed-text-v1.5`).
-4. Start the local server from LM Studio's server tab. Note the port, `1234` by default.
-5. In Chrome, go to `chrome://extensions`, enable Developer Mode, and click Load Unpacked, then select this project's folder.
-6. Open the extension popup, go to the Connection tab, enter the base URL and model ID, and click Test Connection to confirm connectivity.
-7. Optionally, go to the Knowledge Base tab to upload reference documents and enable RAG assisted Tier 2 review.
-8. Paste sensitive test data into any webpage to confirm detection is working as expected.
