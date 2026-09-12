@@ -1,35 +1,39 @@
 /**
  * content.js
- * Injected into every page. Listens for paste events on editable elements.
- * Tier 1 (regex) runs synchronously and blocks the paste on a hit.
- * Tier 2 (local LLM) runs in the background only when Tier 1 finds nothing,
- * and shows a retroactive warning if it flags the text — it never blocks,
- * since the LLM call is too slow to hold up typing.
+ * Injected into every page. Listens for paste events on editable elements,
+ * scans pasted text with the Tier-1 regex engine, and if a leak is found,
+ * blocks the paste and shows an inline warning banner near the field.
  */
 
 (function () {
-  // detectors.js and llm-analyzer.js are loaded before this script (see manifest.json)
   const { scanText, redactText } = window.LLMGuardDetectors || {};
   const { analyzeText, shouldRunTier2 } = window.LLMGuardAnalyzer || {};
+  const { retrieveRelevantChunks } = window.LLMGuardRAG || {};
   if (!scanText) {
     console.warn('[LLM Guard] detectors.js did not load — paste scanning disabled.');
     return;
   }
 
   let activeBanner = null;
-  let tier2Settings = { baseUrl: '', modelId: '', tier2Enabled: false };
+  let tier2Settings = { baseUrl: '', modelId: '', tier2Enabled: false, embeddingModelId: '', ragEnabled: false };
 
-  // Load Tier 2 config once, and keep it updated if the user changes settings
-  chrome.storage.local.get(['baseUrl', 'modelId', 'tier2Enabled'], (data) => {
-    tier2Settings = {
-      baseUrl: data.baseUrl || '',
-      modelId: data.modelId || '',
-      tier2Enabled: Boolean(data.tier2Enabled)
-    };
-  });
+  chrome.storage.local.get(
+    ['baseUrl', 'modelId', 'tier2Enabled', 'embeddingModelId', 'ragEnabled'],
+    (data) => {
+      tier2Settings = {
+        baseUrl: data.baseUrl || '',
+        modelId: data.modelId || '',
+        tier2Enabled: Boolean(data.tier2Enabled),
+        embeddingModelId: data.embeddingModelId || '',
+        ragEnabled: Boolean(data.ragEnabled)
+      };
+    }
+  );
   chrome.storage.onChanged.addListener((changes) => {
     if (changes.baseUrl) tier2Settings.baseUrl = changes.baseUrl.newValue || '';
     if (changes.modelId) tier2Settings.modelId = changes.modelId.newValue || '';
+    if (changes.embeddingModelId) tier2Settings.embeddingModelId = changes.embeddingModelId.newValue || '';
+    if (changes.ragEnabled) tier2Settings.ragEnabled = Boolean(changes.ragEnabled.newValue);
     if (changes.tier2Enabled) tier2Settings.tier2Enabled = Boolean(changes.tier2Enabled.newValue);
   });
 
@@ -118,11 +122,6 @@
     }
   }
 
-  /**
-   * Retroactive warning for Tier 2 (semantic) findings. The paste has
-   * already gone through by the time we get a verdict, so this is
-   * informational only — no redact/proceed choice, just a heads-up.
-   */
   function showTier2Banner(targetEl, verdict) {
     removeBanner();
 
@@ -225,7 +224,6 @@
       const findings = scanText(pastedText);
 
       if (findings.length > 0) {
-        // Tier 1 hit — block immediately, this is a confirmed structural match
         const savedRange = captureSelection(target);
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -234,9 +232,6 @@
         return;
       }
 
-      // No Tier 1 hit — optionally run Tier 2 (semantic) in the background.
-      // The paste is NOT blocked for this; if Tier 2 later flags it, we
-      // show a retroactive warning instead.
       if (
         analyzeText &&
         shouldRunTier2 &&
@@ -245,18 +240,34 @@
         tier2Settings.modelId &&
         shouldRunTier2(pastedText, findings)
       ) {
-        analyzeText(pastedText, {
-          baseUrl: tier2Settings.baseUrl,
-          modelId: tier2Settings.modelId,
-          contextChunks: [] // RAG not implemented yet — always empty for now
-        }).then((verdict) => {
-          if (verdict.leak) {
-            showTier2Banner(target, verdict);
-          }
-          // if verdict.leak is false (or there was an error), stay silent
-        });
+        runTier2(target, pastedText);
       }
     },
-    true // capture phase — catch it before site-specific handlers run
+    true
   );
+
+  async function runTier2(target, pastedText) {
+    let contextChunks = [];
+
+    if (tier2Settings.ragEnabled && tier2Settings.embeddingModelId && retrieveRelevantChunks) {
+      try {
+        contextChunks = await retrieveRelevantChunks(pastedText, {
+          baseUrl: tier2Settings.baseUrl,
+          embeddingModelId: tier2Settings.embeddingModelId
+        });
+      } catch (e) {
+        console.warn('[LLM Guard] RAG retrieval failed, proceeding without context:', e.message);
+      }
+    }
+
+    const verdict = await analyzeText(pastedText, {
+      baseUrl: tier2Settings.baseUrl,
+      modelId: tier2Settings.modelId,
+      contextChunks
+    });
+
+    if (verdict.leak) {
+      showTier2Banner(target, verdict);
+    }
+  }
 })();

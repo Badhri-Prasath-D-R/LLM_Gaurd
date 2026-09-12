@@ -22,6 +22,7 @@ Consider things like: internal project codenames, unreleased product details, pr
 
 Do NOT flag: general knowledge, public information, ordinary conversational text, generic code that is not clearly proprietary (e.g. a textbook algorithm), or already-redacted placeholders like [REDACTED_X].
 
+Keep any internal reasoning brief — a sentence or two at most — then immediately output your answer.
 Respond with STRICT JSON ONLY, no prose, no markdown fences, in this exact shape:
 {"leak": true or false, "confidence": "low" | "medium" | "high", "reason": "one short sentence"}`;
 
@@ -45,7 +46,7 @@ Respond with STRICT JSON ONLY, no prose, no markdown fences, in this exact shape
       baseUrl,
       modelId,
       contextChunks = [],
-      timeoutMs = 12000
+      timeoutMs = 45000 // thinking models can take a while to reason before answering
     } = opts || {};
 
     if (!baseUrl || !modelId) {
@@ -69,7 +70,14 @@ Respond with STRICT JSON ONLY, no prose, no markdown fences, in this exact shape
             { role: 'user', content: userPrompt }
           ],
           temperature: 0.1,
-          max_tokens: 200
+          // Thinking models (like Gemma's reasoning variants) spend a chunk
+          // of the token budget on a hidden reasoning_content field before
+          // ever writing the final answer into content. If max_tokens is
+          // too low, generation gets cut off mid-thought and content comes
+          // back empty. 800 gives real headroom for reasoning + a short
+          // JSON answer. If you're on a non-thinking model this is
+          // wasted budget but harmless — it just means faster completion.
+          max_tokens: 800
         }),
         signal: controller.signal
       });
@@ -82,8 +90,20 @@ Respond with STRICT JSON ONLY, no prose, no markdown fences, in this exact shape
       }
 
       const data = await res.json();
-      const raw = data?.choices?.[0]?.message?.content ?? '';
-      return parseVerdict(raw);
+      const message = data?.choices?.[0]?.message || {};
+      // Some servers (LM Studio with reasoning models) put the final
+      // answer in `content` and hidden reasoning in `reasoning_content`.
+      // If content is empty (generation got cut off before the answer),
+      // fall back to scanning reasoning_content for a JSON verdict —
+      // better than silently treating it as "no leak found".
+      const raw = message.content?.trim() || message.reasoning_content?.trim() || '';
+      const usedFallback = !message.content?.trim() && Boolean(message.reasoning_content?.trim());
+
+      const verdict = parseVerdict(raw);
+      if (usedFallback && !verdict.error) {
+        verdict.reason = `${verdict.reason} (extracted from partial reasoning — response may have been truncated)`;
+      }
+      return verdict;
     } catch (err) {
       clearTimeout(timeout);
       const errLabel = err.name === 'AbortError' ? 'timeout' : err.message;

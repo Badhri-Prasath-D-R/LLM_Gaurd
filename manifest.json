@@ -3,7 +3,7 @@
   "name": "LLM Guard - LM Studio Connection Test",
   "version": "0.1.0",
   "description": "Verifies connectivity between the browser and a local LM Studio server.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "unlimitedStorage"],
   "host_permissions": ["http://localhost/*", "http://127.0.0.1/*", "<all_urls>"],
   "action": {
     "default_popup": "popup.html",
@@ -13,7 +13,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["detectors.js", "llm-analyzer.js", "content.js"],
+      "js": ["detectors.js", "llm-analyzer.js", "rag-store.js", "content.js"],
       "run_at": "document_idle"
     }
   ]
