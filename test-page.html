@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>LLM Guard - Paste Test Page</title>
+<style>
+  body { font-family: sans-serif; padding: 30px; max-width: 600px; }
+  textarea, input, div.editable {
+    width: 100%; box-sizing: border-box; padding: 8px;
+    font-size: 14px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px;
+  }
+  textarea { height: 100px; }
+  div.editable { min-height: 60px; }
+  h3 { margin-top: 30px; }
+</style>
+</head>
+<body>
+  <h2>LLM Guard Paste Test Page</h2>
+  <p>Paste a secret (e.g. <code>sk_live_51H1234567890abcdefghijklmnop</code>) into each field below and confirm only ONE copy of text appears after choosing "Paste Redacted" or "Paste Anyway".</p>
+
+  <h3>Textarea</h3>
+  <textarea placeholder="Paste here..."></textarea>
+
+  <h3>Input</h3>
+  <input type="text" placeholder="Paste here..." />
+
+  <h3>Contenteditable div</h3>
+  <div class="editable" contenteditable="true">Paste here...</div>
+</body>
+</html>

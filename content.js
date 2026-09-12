@@ -6,8 +6,6 @@
  */
 
 (function () {
-  // detectors.js is loaded before this script (see manifest.json),
-  // so window.LLMGuardDetectors is available.
   const { scanText, redactText } = window.LLMGuardDetectors || {};
   if (!scanText) {
     console.warn('[LLM Guard] detectors.js did not load — paste scanning disabled.');
@@ -37,7 +35,23 @@
     }
   }
 
-  function showBanner(targetEl, findings, pastedText) {
+  function captureSelection(el) {
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+      return {
+        start: el.selectionStart ?? el.value.length,
+        end: el.selectionEnd ?? el.value.length
+      };
+    }
+    if (el.isContentEditable) {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        return { range: selection.getRangeAt(0).cloneRange() };
+      }
+    }
+    return null;
+  }
+
+  function showBanner(targetEl, findings, pastedText, savedRange) {
     removeBanner();
 
     const banner = document.createElement('div');
@@ -79,18 +93,17 @@
     activeBanner = banner;
 
     banner.querySelector('[data-action="redact"]').addEventListener('click', () => {
-      insertText(targetEl, redactText(pastedText));
+      insertText(targetEl, redactText(pastedText), savedRange);
       removeBanner();
     });
     banner.querySelector('[data-action="proceed"]').addEventListener('click', () => {
-      insertText(targetEl, pastedText);
+      insertText(targetEl, pastedText, savedRange);
       removeBanner();
     });
     banner.querySelector('[data-action="cancel"]').addEventListener('click', () => {
       removeBanner();
     });
 
-    // dismiss if user clicks elsewhere
     setTimeout(() => {
       document.addEventListener('click', onOutsideClick, { once: true, capture: true });
     }, 0);
@@ -102,11 +115,14 @@
     }
   }
 
-  function insertText(el, text) {
+  function insertText(el, text, savedRange) {
     el.focus();
+
     if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
-      const start = el.selectionStart ?? el.value.length;
-      const end = el.selectionEnd ?? el.value.length;
+      // Use the selection captured at paste-time, not whatever the
+      // live selection is now (it may have moved while the banner was open).
+      const start = savedRange ? savedRange.start : (el.selectionStart ?? el.value.length);
+      const end = savedRange ? savedRange.end : (el.selectionEnd ?? el.value.length);
       const before = el.value.slice(0, start);
       const after = el.value.slice(end);
       el.value = before + text + after;
@@ -114,8 +130,13 @@
       el.setSelectionRange(newPos, newPos);
       el.dispatchEvent(new Event('input', { bubbles: true }));
     } else if (el.isContentEditable) {
-      // Use execCommand for contenteditable — still broadly supported
-      // and simplest for cross-site compatibility (Gmail, chat UIs, etc.)
+      // Restore the exact Range captured at paste-time before inserting,
+      // otherwise execCommand inserts at whatever the cursor drifted to.
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      if (savedRange && savedRange.range) {
+        selection.addRange(savedRange.range);
+      }
       document.execCommand('insertText', false, text);
     }
   }
@@ -132,11 +153,16 @@
       const findings = scanText(pastedText);
       if (findings.length === 0) return; // silent — no leak, let paste proceed normally
 
+      // capture the current selection BEFORE blocking the native paste,
+      // so we know exactly where to insert the replacement text later
+      const savedRange = captureSelection(target);
+
       // block the native paste, show the warning banner instead
       event.preventDefault();
+      event.stopImmediatePropagation();
       event.stopPropagation();
-      showBanner(target, findings, pastedText);
+      showBanner(target, findings, pastedText, savedRange);
     },
-    true // capture phase — catch it before site-specific handlers run
+    true
   );
 })();

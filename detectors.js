@@ -7,7 +7,6 @@
  * Finding: { type, match, index, redacted }
  */
 
-// Each rule: id, label, regex (global), optional validate(match) -> bool
 const RULES = [
   {
     id: 'aws_access_key',
@@ -17,9 +16,8 @@ const RULES = [
   {
     id: 'aws_secret_key',
     label: 'AWS Secret Access Key (heuristic)',
-    // 40-char base64-ish string near the word "secret" — flagged with lower confidence
     regex: /\b[0-9a-zA-Z/+]{40}\b/g,
-    contextHint: /aws|secret/i // only flagged if this appears within 60 chars
+    contextHint: /aws|secret/i
   },
   {
     id: 'openai_key',
@@ -90,7 +88,6 @@ const RULES = [
   {
     id: 'generic_env_secret',
     label: 'Assigned Secret in .env-style line',
-    // KEY=value or KEY: value where KEY name suggests a secret, value looks non-trivial
     regex: /\b([A-Z0-9_]*(SECRET|API[_-]?KEY|TOKEN|PASSWORD|PASSWD|PRIVATE[_-]?KEY|ACCESS[_-]?KEY)[A-Z0-9_]*)\s*[:=]\s*['"]?([^\s'"]{8,})['"]?/gi,
     captureGroupForMatch: 0
   }
@@ -117,16 +114,11 @@ function redact(match) {
   return match.slice(0, 4) + '...' + match.slice(-4) + ` [REDACTED:${match.length}ch]`;
 }
 
-/**
- * Scan a block of text for known secret patterns.
- * @param {string} text
- * @returns {Array<{id: string, label: string, match: string, redacted: string, index: number}>}
- */
 function scanText(text) {
   if (!text || typeof text !== 'string') return [];
 
   const findings = [];
-  const seen = new Set(); // avoid duplicate reports for overlapping rules
+  const seen = new Set();
 
   for (const rule of RULES) {
     rule.regex.lastIndex = 0;
@@ -134,7 +126,6 @@ function scanText(text) {
     while ((m = rule.regex.exec(text)) !== null) {
       const matched = m[0];
 
-      // context hint rules only fire if a nearby keyword is present
       if (rule.contextHint) {
         const windowStart = Math.max(0, m.index - 60);
         const windowEnd = Math.min(text.length, m.index + matched.length + 60);
@@ -156,19 +147,14 @@ function scanText(text) {
         index: m.index
       });
 
-      // guard against zero-length infinite loops
       if (m[0].length === 0) rule.regex.lastIndex++;
     }
   }
 
-  // sort by position in text
   findings.sort((a, b) => a.index - b.index);
   return findings;
 }
 
-/**
- * Convenience: returns true/false plus the findings, for quick gating.
- */
 function hasLeak(text) {
   const findings = scanText(text);
   return { leak: findings.length > 0, findings };
@@ -183,7 +169,6 @@ function redactText(text) {
   const findings = scanText(text);
   if (findings.length === 0) return text;
 
-  // Sort by start index, then merge any spans that overlap
   const sorted = [...findings].sort((a, b) => a.index - b.index);
   const spans = [];
   for (const f of sorted) {
@@ -191,7 +176,6 @@ function redactText(text) {
     const end = f.index + f.match.length;
     const lastSpan = spans[spans.length - 1];
     if (lastSpan && start < lastSpan.end) {
-      // overlaps previous span — extend it and record the extra label
       lastSpan.end = Math.max(lastSpan.end, end);
       lastSpan.ids.add(f.id);
     } else {
@@ -199,7 +183,6 @@ function redactText(text) {
     }
   }
 
-  // Replace from the end so earlier indices stay valid
   let result = text;
   for (let i = spans.length - 1; i >= 0; i--) {
     const span = spans[i];
@@ -210,7 +193,6 @@ function redactText(text) {
   return result;
 }
 
-// Export for both browser extension context (window) and Node (module.exports / testing)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { scanText, hasLeak, redactText, RULES };
 }

@@ -9,7 +9,6 @@ const DEFAULTS = {
   modelId: 'google/gemma-4-e4b'
 };
 
-// Load saved settings on popup open
 chrome.storage.local.get(['baseUrl', 'modelId'], (data) => {
   baseUrlEl.value = data.baseUrl || DEFAULTS.baseUrl;
   modelIdEl.value = data.modelId || DEFAULTS.modelId;
@@ -30,7 +29,6 @@ async function testConnection() {
     return;
   }
 
-  // Persist settings for next time
   chrome.storage.local.set({ baseUrl, modelId });
 
   testBtn.disabled = true;
