@@ -18,6 +18,15 @@
   <label>Default Model ID
     <input id="modelId" type="text" placeholder="google/gemma-4-e4b" />
   </label>
+  <label style="display:flex; align-items:center; gap:8px; margin-top:16px;">
+    <input id="tier2Enabled" type="checkbox" style="width:auto; margin:0;" />
+    <span>Enable AI (Tier 2) analysis for text regex misses</span>
+  </label>
+  <div style="font-size:12px; color:#666; margin-top:4px;">
+    When enabled, text that passes the regex check is also sent to your local LLM for a semantic
+    review. Runs in the background — it will not block or delay your paste. If it finds something,
+    you'll see a follow-up warning near the field.
+  </div>
   <button id="saveBtn">Save</button>
   <div id="saved"></div>
   <script src="options.js"></script>
