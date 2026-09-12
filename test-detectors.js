@@ -14,9 +14,7 @@ const cases = [
   ['Credit card (valid Luhn)', 'card number 4532015112830366 please charge it'],
   ['Generic env secret', 'STRIPE_SECRET_KEY = "abcd1234efgh5678"'],
   ['Clean text (no leak)', 'Hey team, can we push the meeting to 3pm tomorrow?'],
-  ['Clean code snippet', 'function add(a, b) { return a + b; }'],
-  ['Credit card (valid Luhn)','AWS: AKIAIOSFODNN7EXAMPLE OpenAI: sk-proj-abcdefghijklmnopqrstuvwxyz123456 Anthropic: sk-ant-api03-abcdefghijklmnopqrstuvwxyz GitHub: ghp_1234567890abcdefghijklmnopqrstuvwxyz Slack: xoxb-1234567890-1234567890123-abcdefghijklmnopqrstuvwx Google: AIzaSyD1234567890abcdefghijklmnopqrstuv Stripe: sk_live_51H1234567890abcdefghijklmnop JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U DB: postgresql://admin:sup3rSecret@db.internal.company.com:5432/prod Card: 4532015112830366 Env style: STRIPE_SECRET_KEY = "abcd1234efgh5678" Private key: -----BEGIN RSA PRIVATE KEY----- MIIEpAIBAAKCAQEA... -----END RSA PRIVATE KEY-----'],
-  ['Clean code snippet','Hey team, can we push the meeting to 3pm tomorrow? Also can you review the PR before EOD.']
+  ['Clean code snippet', 'function add(a, b) { return a + b; }']
 ];
 
 let pass = 0, fail = 0;

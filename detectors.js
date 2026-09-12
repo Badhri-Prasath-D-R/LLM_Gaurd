@@ -176,17 +176,36 @@ function hasLeak(text) {
 
 /**
  * Produces a redacted version of the text with all findings replaced.
+ * Overlapping findings (multiple rules matching the same span) are merged
+ * into a single placeholder so the output text stays valid.
  */
 function redactText(text) {
   const findings = scanText(text);
   if (findings.length === 0) return text;
 
+  // Sort by start index, then merge any spans that overlap
+  const sorted = [...findings].sort((a, b) => a.index - b.index);
+  const spans = [];
+  for (const f of sorted) {
+    const start = f.index;
+    const end = f.index + f.match.length;
+    const lastSpan = spans[spans.length - 1];
+    if (lastSpan && start < lastSpan.end) {
+      // overlaps previous span — extend it and record the extra label
+      lastSpan.end = Math.max(lastSpan.end, end);
+      lastSpan.ids.add(f.id);
+    } else {
+      spans.push({ start, end, ids: new Set([f.id]) });
+    }
+  }
+
+  // Replace from the end so earlier indices stay valid
   let result = text;
-  // replace from the end so indices don't shift
-  for (let i = findings.length - 1; i >= 0; i--) {
-    const f = findings[i];
-    const placeholder = `[REDACTED_${f.id.toUpperCase()}]`;
-    result = result.slice(0, f.index) + placeholder + result.slice(f.index + f.match.length);
+  for (let i = spans.length - 1; i >= 0; i--) {
+    const span = spans[i];
+    const idLabel = [...span.ids].map((id) => id.toUpperCase()).join('_AND_');
+    const placeholder = `[REDACTED_${idLabel}]`;
+    result = result.slice(0, span.start) + placeholder + result.slice(span.end);
   }
   return result;
 }
