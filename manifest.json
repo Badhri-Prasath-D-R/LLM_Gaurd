@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "LLM Guard - LM Studio Connection Test",
+  "version": "0.1.0",
+  "description": "Verifies connectivity between the browser and a local LM Studio server.",
+  "permissions": ["storage"],
+  "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "LLM Guard"
+  },
+  "options_page": "options.html"
+}

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 480px; }
+    label { display: block; margin-top: 12px; font-size: 13px; color: #333; }
+    input { width: 100%; padding: 6px; margin-top: 4px; box-sizing: border-box; }
+    button { margin-top: 16px; padding: 8px 16px; }
+    #saved { margin-top: 10px; color: green; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h2>LLM Guard Settings</h2>
+  <label>Local LLM Base URL
+    <input id="baseUrl" type="text" placeholder="http://localhost:1234" />
+  </label>
+  <label>Default Model ID
+    <input id="modelId" type="text" placeholder="google/gemma-4-e4b" />
+  </label>
+  <button id="saveBtn">Save</button>
+  <div id="saved"></div>
+  <script src="options.js"></script>
+</body>
+</html>

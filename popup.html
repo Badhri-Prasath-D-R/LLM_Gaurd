@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 340px;
+      font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+      padding: 14px;
+      background: #1e1e1e;
+      color: #eee;
+    }
+    h3 { margin: 0 0 10px; font-size: 15px; }
+    .row { margin-bottom: 8px; }
+    input, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: #2a2a2a;
+      color: #eee;
+      font-size: 12px;
+    }
+    textarea { resize: vertical; min-height: 60px; }
+    button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 6px;
+      border: none;
+      border-radius: 6px;
+      background: #4f8ef7;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { background: #555; cursor: not-allowed; }
+    #status {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .ok { background: #14351f; border: 1px solid #2f8f4e; }
+    .err { background: #3a1a1a; border: 1px solid #a33; }
+    .pending { background: #333; border: 1px solid #666; }
+    label { font-size: 11px; color: #aaa; }
+  </style>
+</head>
+<body>
+  <h3>LLM Guard — LM Studio Test</h3>
+
+  <div class="row">
+    <label>Base URL</label>
+    <input id="baseUrl" type="text" placeholder="http://localhost:1234" />
+  </div>
+
+  <div class="row">
+    <label>Model ID (as shown in LM Studio)</label>
+    <input id="modelId" type="text" placeholder="google/gemma-4-e4b" />
+  </div>
+
+  <div class="row">
+    <label>Test message</label>
+    <textarea id="testMsg">Say "connected" if you can read this.</textarea>
+  </div>
+
+  <button id="testBtn">Test Connection</button>
+
+  <div id="status" class="pending">Idle.</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
